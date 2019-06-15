@@ -18,7 +18,7 @@
 
 >  仓库会不断更新和完善新的笔试面试中出现的模板^_^。
 >
->  如果star比较多的话，我会在近日内出C++版本哦^_^。
+>  由于这段时间非常忙，C++版本没有跟上，有兴趣的可以先看我之前写的[ACMC++模板](https://blog.csdn.net/zxzxzx0119/article/details/79838261)，后面有时间我会补上^_^。
 
 ## 目录
 
@@ -207,7 +207,7 @@ static void binaryInsertSort(int[] arr) {
 static void shellSort(int[] arr) {
     for (int g = arr.length; g > 0; g /= 2) { // 增量序列 gap
         for (int end = g; end < arr.length; end++) { // 每一个组的结束元素, 从数组第gap个元素开始
-            // 每组没做插入排序
+            // 每组做插入排序
             int key = arr[end], i;
             for (i = end - g; i >= 0 && key < arr[i]; i -= g) arr[i + g] = arr[i];
             arr[i + g] = key;
@@ -249,7 +249,7 @@ static int[] partition(int[] arr, int L, int R) {
         }
     }
     swap(arr, L, less);
-    // 返回相等的两个下标，　less位置是我最后交换过来的花粉值，more位置是>的，所以返回more-1
+    // 返回相等的两个下标，　less位置是我最后交换过来的划分值，more位置是>的，所以返回more-1
     return new int[]{less, more - 1};
 }
 ```
@@ -332,7 +332,7 @@ static void siftDown(int[] arr, int i, int heapSize) {
 }
 ```
 
-第二种方式，使用heapfiy的优化，只需要使用`siftDown`过程即可。
+第二种方式，使用`heapfiy`的优化，只需要使用`siftDown`过程即可。
 
 ```java
 // 注意这里是size+1,因为这个不是交换了最后一个，所以要考虑arr[size]，下面不要考虑arr[size]
@@ -353,7 +353,7 @@ static void heapSort2(int[] arr) {
 其中`siftDown`过程也可以使用递归的写法: 
 
 ```java
-static void siftDown(int[] arr, int i, int heapSize) { //从A[i] 开始往下调整
+static void siftDown(int[] arr, int i, int heapSize) { //从arr[i] 开始往下调整
     int L = 2 * i + 1;
     int R = 2 * i + 2;
     int maxIdx = i;
@@ -3149,10 +3149,11 @@ public class M28_ApproximateNumberEnum {
     static ArrayList<Integer> divisor(int n) {
         ArrayList<Integer> res = new ArrayList<>();
         for (int i = 1; i * i <= n; i++) {
-            if (n % i == 0)
+            if (n % i == 0) {
                 res.add(i);
-            if (i != n / i)
-                res.add(n / i);
+                if (i != n / i)
+                    res.add(n / i);
+            }
         }
         return res;
     }
