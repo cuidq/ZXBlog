@@ -22,7 +22,7 @@
 
 ## 一、类加载时机
 
-类从被加载到虚拟机内存中开始，到旬载出内存为止，它的整个生命周期包括 : 加载 (Loading)、验 证(Verification)、准 备 (Preparation)、解 析 (Resolution)、初始化(Initialization)、使用(Using) 和卸载 (Unloading) 7 个阶段。其中验证、准备、解析 3 个部分统称为连接 (Linking)，这 7 个阶段的发生顺序如图 所示。
+类从被加载到虚拟机内存中开始，到出内存为止，它的整个生命周期包括 : 加载 (Loading)、验 证(Verification)、准 备 (Preparation)、解 析 (Resolution)、初始化(Initialization)、使用(Using) 和卸载 (Unloading) 7 个阶段。其中验证、准备、解析 3 个部分统称为连接 (Linking)，顺序如图 所示。
 
 ![j44_类加载顺序.png](images/j44_类加载顺序.png)
 
@@ -34,7 +34,7 @@
 
 Java程序对类的使用方式可以分为两种: **主动引用、被动引用**。
 
-所有的Java虚拟机实现必须在每个类或接口被Java程序 "**首次主动使用**"时才初始化他们。
+所有的Java虚拟机实现必须在每个类或接口被Java程序 "**首次主动使用**"时才**初始化**他们。
 
 ### 1、主动引用
 
@@ -157,6 +157,12 @@ class [I
  *     常量在编译阶段会存入到调用这个常量的方法所在的类的常量池中
  *     本质上，调用类并没有直接引用到定义常量的类，因此不会触发定义常量的类的初始化
  *     注意: 我们指的是 将常量存放到了T2的常量池中，之后T2与P就没有任何关系了(甚至可以将P.class删除)
+ *      
+ * 助记符:
+ *         ldc表示将int,float或是String类型的常量值从常量池中推送至栈顶
+ *         bipush表示将单字节(-128~127)的常量值推送至栈顶
+ *         sipush表示将int型(-32768~32767)推送至栈顶
+ *         iconst_1表示将int型的1推动到栈顶(只有-1~5有这种)
  */
 public class T2 {
     public static void main(String[] args) {
@@ -211,9 +217,13 @@ P static block~
 b716f2dd-5a6e-4542-bc88-0cf833216de5
 ```
 
-* 当一个接口在初始化时，并不要求其父接口都完成了初始化，只有在真正用到父接口的时候，如引用接口中定义的常量时，才会初始化。
+* **当一个接口在初始化时，并不要求其父接口都完成了初始化，只有在真正用到父接口的时候，如引用接口中定义的常量时，才会初始化**。
 
 ```java
+/**
+ * 都可以删除
+ * 可以删除父接口PI5的.class文件 和 子接口CI5的.class文件
+ */
 public class T5{
 	
 	public static void main(String[] args){
@@ -230,13 +240,16 @@ interface CI5 extends PI5{
 }
 ```
 
-可以发现删除`PI5.class`文件之后，也可以运行（如果改成类，且不加上final关键字，就会抛出异常，因为接口就算不加`final`关键字，默认也会加上(接口里面的变量默认是`public static final`)）
+可以发现删除`PI5.class`文件之后，也可以运行（如果改成类`class`，且不加上final关键字，就会抛出异常，因为接口就算不加`final`关键字，默认也会加上(接口里面的变量默认是`public static final`)）
 
 ![1559543568574](assets/1559543568574.png)
 
 但是下面的动态引用还是会需要用到父类的初始化。
 
 ```java
+/**
+ * 这种情况两个都不能删除
+ */
 public class T5{
 	
 	public static void main(String[] args){
@@ -254,9 +267,59 @@ interface CI5 extends PI5{
 }
 ```
 
-删除父接口的`.class`之后，再次运行，也会抛出异常。
+删除父接口的`.class`之后，再次运行，也会抛出异常。（两个都不能删除）
 
 ![1559543525468](assets/1559543525468.png)
+
+### 3、类加载顺序
+
+类的加载由上到下进行。
+
+注意下列代码。
+
+```java
+public class T7 {
+
+    public static void main(String[] args) {
+
+        Singleton singleton = Singleton.getInstance();
+
+        System.out.println("counter1 : " + Singleton.counter1);
+        System.out.println("counter2 : " + Singleton.counter2);
+    }
+}
+
+/**
+ * 初始化的顺序: 从上往下
+ */
+class Singleton{
+
+    public static int counter1;
+
+    private static Singleton singleton = new Singleton();
+
+    private Singleton(){
+        counter1++;
+        counter2++; //一开始是1，后面又变成了0  (准备阶段的意义)
+//        System.out.println("类加载初始化的时候-------counter1 : "+ counter1 + ",  counter2 : " + counter2);
+    }
+
+    public static int counter2 = 0; //由1变成0
+
+    public static Singleton getInstance(){
+        return singleton;
+    }
+}
+```
+
+上述代码输出：
+
+```java
+counter1 : 1
+counter2 : 0
+```
+
+因为类加载从上到下，虽然在私有构造方法中`counter2`被赋值成了`1`，但是初始化后面代码的时候，又被赋值成了`0`。
 
 ## 二、类加载过程
 
@@ -302,7 +365,7 @@ interface CI5 extends PI5{
 
 ### 3、准备
 
-准备阶段正式为**类变量分配内存并设置变量的初始值**。这些变量使用的内存都将在**方法区**中进行分配。类变量是被 static 修饰的变量，准备阶段为类变量分配内存并设置初始值，使用的是方法区的内存。
+准备阶段正式为**类变量分配内存并设置变量的初始值，但在到达初始化之前，类变量都没有初始化为真正的初始值**。这些变量使用的内存都将在**方法区**中进行分配。类变量是被 static 修饰的变量，准备阶段为类变量分配内存并设置初始值，使用的是方法区的内存。
 
 **实例变量不会在这阶段分配内存，它将会在对象实例化时随着对象一起分配在堆中**。注意，**实例化不是类加载的一个过程，类加载发生在所有实例化操作之前，并且类加载只进行一次，实例化可以进行多次**。
 
@@ -327,14 +390,14 @@ public static final int value = 123;
 - 类方法解析
 - 接口方法解析
 
-**什么是符号引用和直接引用**？
+> **什么是符号引用和直接引用**？
 
-- **符号引用**：符号引用是一组符号来描述所引用的目标对象，符号可以是任何形式的字面量，只要使用时能无歧义地定位到目标即可。符号引用与虚拟机实现的内存布局无关，引用的目标对象并不一定已经加载到内存中。
-- **直接引用**：*直接引用可以是直接指向目标对象的指针*、相对偏移量或是一个能间接定位到目标的句柄。直接引用是与虚拟机内存布局实现相关的，同一个符号引用在不同虚拟机实例上翻译出来的直接引用一般不会相同，如果有了直接引用，那引用的目标必定已经在内存中存在。
+> - **符号引用**：符号引用是一组符号来描述所引用的目标对象，符号可以是任何形式的字面量，只要使用时能无歧义地定位到目标即可。符号引用与虚拟机实现的内存布局无关，引用的目标对象并不一定已经加载到内存中。
+> - **直接引用**：*直接引用可以是直接指向目标对象的指针*、相对偏移量或是一个能间接定位到目标的句柄。直接引用是与虚拟机内存布局实现相关的，同一个符号引用在不同虚拟机实例上翻译出来的直接引用一般不会相同，如果有了直接引用，那引用的目标必定已经在内存中存在。
 
-符号引用就是字符串，这个字符串包含足够的信息，以供实际使用时可以找到相应的位置。你比如说某个方法的符号引用，如：`“java/io/PrintStream.println:(Ljava/lang/String;)”`。里面有类的信息，方法名，方法参数等信息。
+> 符号引用就是字符串，这个字符串包含足够的信息，以供实际使用时可以找到相应的位置。你比如说某个方法的符号引用，如：`“java/io/PrintStream.println:(Ljava/lang/String;)”`。里面有类的信息，方法名，方法参数等信息。
 
-当第一次运行时，要根据字符串的内容，到该类的方法表中搜索这个方法。运行一次之后，符号引用会被替换为直接引用，下次就不用搜索了。直接引用就是偏移量，通过偏移量虚拟机可以直接在该类的内存区域中找到方法字节码的起始位置。
+> 当第一次运行时，要根据字符串的内容，到该类的方法表中搜索这个方法。运行一次之后，符号引用会被替换为直接引用，下次就不用搜索了。直接引用就是偏移量，通过偏移量虚拟机可以直接在该类的内存区域中找到方法字节码的起始位置。
 
 ### 5、初始化
 
@@ -356,7 +419,7 @@ public class Test {
 }
 ```
 
-- 与类的构造函数（或者说实例构造器` <init>()`）不同，不需要显式的调用父类的构造器。虚拟机会自动保证在子类的 `<clinit>()` 方法运行之前，父类的 `<clinit>()` 方法已经执行结束。因此虚拟机中第一个执行` <clinit>() `方法的类肯定为 java.lang.Object。
+- 与类的构造函数（或者说实例构造器` <init>()`）不同，不需要显式的调用父类的构造器。虚拟机会自动保证在子类的 `<clinit>()` 方法运行之前，父类的 `<clinit>()` 方法已经执行结束。因此虚拟机中第一个执行` <clinit>() `方法的类肯定为 `java.lang.Object`。
 
 - 由于父类的 `<clinit>()` 方法先执行，也就意味着父类中定义的静态语句块要优先于子类的变量赋值操作。例如以下代码：
 
@@ -410,9 +473,9 @@ Java运行时，会根据**类的完全限定名寻找并加载类，寻找的�
 
 按照开发人员来说，类加载器不是只有一个，一般程序运行时，都会有三个：
 
-* 启动类加载器(`Bootstrap ClassLoader`)：这个加载器是Java虚拟机实现的一部分，不是Java语言实现的，一般是C++实现的，它负责加载Java的基础类，主要是`<JAVA_HOME>/lib/rt.jar`，我们日常用的Java类库比如String, ArrayList等都位于该包内。
+* 启动类加载器(`Bootstrap ClassLoader`)：这个加载器是Java虚拟机实现的一部分，不是Java语言实现的，一般是C++实现的，它负责加载Java的基础类，主要是`<JAVA_HOME>/lib/rt.jar`，我们日常用的Java类库比如String，ArrayList等都位于该包内。
 * 扩展类加载器(`Extension ClassLoader`)：这个加载器的实现类是`sun.misc.Launcher$ExtClassLoader`，它负责加载Java的一些扩展类，一般是`<JAVA_HOME>/lib/ext`目录中的jar包。
-* 应用程序类加载器(`Application ClassLoade`r)：这个加载器的实现类是`sun.misc.Launcher$AppClassLoader`，它负责加载应用程序的类，包括自己写的和引入的第三方法类库，即所有在类路径中指定的类。
+* 应用程序类加载器(`Application ClassLoader`)：这个加载器的实现类是`sun.misc.Launcher$AppClassLoader`，它负责加载应用程序的类，包括自己写的和引入的第三方法类库，即所有在类路径中指定的类。
 
 ### 3、双亲委派模型
 
@@ -422,11 +485,11 @@ Java运行时，会根据**类的完全限定名寻找并加载类，寻找的�
 * 如果没有被加载，先让父ClassLoader去加载，如果加载成功，返回得到的Class对象。
 * 在父ClassLoader没有加载成功的前提下，自己尝试加载类。
 
-这个过程一般被称为"双亲委派"模型，即优先让父ClassLoader去加载。为什么要先让父ClassLoader去加载呢？这样，可以**避免Java类库被覆盖**的问题，比如用户程序也定义了一个类java.lang.String，通过双亲委派，java.lang.String只会被Bootstrap ClassLoader加载，避免自定义的String覆盖Java类库的定义。需要了解的是，"双亲委派"虽然是一般模型，但也有一些例外，比如：
+这个过程一般被称为"双亲委派"模型，即优先让父ClassLoader去加载。为什么要先让父ClassLoader去加载呢？这样，可以**避免Java类库被覆盖**的问题，比如用户程序也定义了一个类`java.lang.String`，通过双亲委派，java.lang.String只会被Bootstrap ClassLoader加载，避免自定义的String覆盖Java类库的定义。需要了解的是，"双亲委派"虽然是一般模型，但也有一些例外，比如：
 
 - 自定义的加载顺序：尽管不被建议，自定义的ClassLoader可以不遵从"双亲委派"这个约定，不过，即使不遵从，以"java"开头的类也不能被自定义类加载器加载，这是由Java的安全机制保证的，以避免混乱。
 - 网状加载顺序：在OSGI框架中，类加载器之间的关系是一个网，每个OSGI模块有一个类加载器，不同模块之间可能有依赖关系，在一个模块加载一个类时，可能是从自己模块加载，也可能是委派给其他模块的类加载器加载。
-- 父加载器委派给子加载器加载：典型的例子有JNDI服务(Java Naming and Directory Interface)，它是Java企业级应用中的一项服务。
+- 父加载器委派给子加载器加载：典型的例子有JNDI服务(`Java Naming and Directory Interface`)，它是Java企业级应用中的一项服务。
 
 一个程序运行时，会创建一个Application ClassLoader，在程序中用到ClassLoader的地方，如果没有指定，一般用的都是这个ClassLoader，所以，**这个ClassLoader也被称为系统类加载器(System ClassLoader)**。
 
